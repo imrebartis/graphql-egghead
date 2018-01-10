@@ -5,24 +5,33 @@ const { graphql, buildSchema } = require('graphql');
 const schema = buildSchema(`
 
 type Query {
-    foo: String
+    id: ID,
+    title: String,
+    duration: Int,
+    watched: Boolean
   }
 
-type Schema {
-  query: Query
-}
-`);
+  type Schema {
+      query: Query
+  }
+`)
 
 const resolvers = {
-    foo: () => 'barbar',
-  };
+    id: () => '1',
+    title: () => 'bar',
+    duration: () => 111,
+    watched: () => true
+  }
 
-const query = `
-query myFirstQuery {
-  foo
-}
-`;
+  const query = `
+    query myFirstQuery {
+        id
+        title
+        duration
+        watched
+    }
+  `;
 
-graphql(schema, query, resolvers)
-  .then((result) => console.log(result))
-  .catch((error) => console.log(error));
+  graphql(schema, query, resolvers)
+    .then((result) => console.log(result))
+    .catch((error) => console.log(error));
