@@ -5,20 +5,35 @@ const { graphql, buildSchema } = require('graphql');
 const schema = buildSchema(`
 
 type Video {
-    id: ID,
-    title: String,
-    duration: Int, 
+    id: ID
+    title: String
+    duration: Int 
     watched: Boolean
   }
 
 type Query {
   video: Video
+  videos: [Video]
 }
 
   type Schema {
       query: Query
   }
 `)
+
+const videoA = {
+    id: 'a', 
+    title: 'Create a GraphQL Schema',
+    duration: 120,
+    watched: true,
+  };
+  const videoB = {
+    id: 'b', 
+    title: 'Ember.js CLI',
+    duration: 240, 
+    watched: false,
+  };
+  const videos = [videoA, videoB];
 
 const resolvers = {
     video: () => ({
@@ -27,12 +42,13 @@ const resolvers = {
       duration: 180,
       watched: true
     }),
+    videos: () => videos
   };
   
 
   const query = `
   query myFirstQuery {
-    video {
+    videos {
      id,
      title,
      duration,
@@ -46,5 +62,4 @@ const resolvers = {
     .catch((error) => console.log(error));
 
 // terminal: node index.js =>
-// { data: 
-// { video: { id: '1', title: 'Foo', duration: 180, watched: true } } }
+// { data: { videos: [ [Object], [Object] ] } }
