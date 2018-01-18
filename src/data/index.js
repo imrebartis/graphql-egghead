@@ -20,4 +20,8 @@ const videoA = {
     resolve(video);
   });
 
+// a promise returning all the videos:
+  const getVideos = () => new Promise((resolve) => resolve(videos));
+
+  exports.getVideos = getVideos;
   exports.getVideoById = getVideoById;
