@@ -14,16 +14,33 @@ const {
   GraphQLBoolean,
 } = require('graphql');
 const { getVideoById, getVideos, createVideo } = require('./src/data');
+const nodeInterface = require('./src/node');
+
 
 const PORT = process.env.PORT || 3000;
 const server = express();
+
+
+// The goal for the interface is to be able
+// to use it anytime we have shared fields between types,
+// e.g. if we also have the instructorType below
+
+// const instructorType = newGraphQLObjectType({
+//   fields: {
+//     id: {
+//       type: GraphQLID,
+//       description: 'The id of the video',
+//     },
+//   },
+//   interfaces: [nodeInterface]
+// });
 
 const videoType = new GraphQLObjectType({
   name: 'Video',
   description: 'A video on Egghead.io',
   fields: {
     id: {
-      type: GraphQLID,
+      type: new GraphQLNonNull(GraphQLID),
       description: 'The id of the video.',
     },
     title: {
@@ -39,7 +56,11 @@ const videoType = new GraphQLObjectType({
       description: 'Whether or not the viewer has watched the video.',
     },
   },
+  // nodeInterface is the first element of the interfaces array
+  interfaces: [nodeInterface]
 });
+
+exports.videoType = videoType;
 
 const queryType = new GraphQLObjectType({
   name: 'QueryType',
