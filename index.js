@@ -1,8 +1,12 @@
-// In order to properly traverse through collections,
-// Relay-compliant servers require a mechanism to page through
-// collections available in a GraphQL Schema. Here we're
-// creating a Connection type from an existing GraphQL List Type
-// and access edge information from each collection.
+// In order to support mutations in Relay, there is 
+// a requirement that the GraphQL Server exposes mutation
+//  fields in a standardized way. This standard includes 
+//  a way for mutations to accept and emit an identifier string,
+//   allowing Relay to track mutations and responses. Here
+//   we're using a helper available to us through graphql-relay
+//   to create Mutation fields that accept clientMutationId’s.
+
+
 
 'use strict';
 
@@ -24,7 +28,8 @@ const {
   globalIdField,
   connectionDefinitions,
   connectionFromPromisedArray,
-  connectionArgs
+  connectionArgs,
+  mutationWithClientMutationId
 } = require('graphql-relay');
 const { nodeInterface, nodeField } = require('./src/node');
 
@@ -99,13 +104,13 @@ const queryType = new GraphQLObjectType({
   },
 });
 
-const videoInputType = new GraphQLInputObjectType({
-  name: 'VideoInput',
-  fields: {
+const videoMutation = mutationWithClientMutationId({
+  name: 'AddVideo',
+  inputFields: {
     title: {
-          type: new GraphQLNonNull(GraphQLString),
-          description: 'The title of the video.',
-        },
+      type: new GraphQLNonNull(GraphQLString),
+      description: 'The title of the video.',
+    },
     duration: {
       type: new GraphQLNonNull(GraphQLInt),
       description: 'The duration of the video (in seconds).',
@@ -114,24 +119,24 @@ const videoInputType = new GraphQLInputObjectType({
       type: new GraphQLNonNull(GraphQLBoolean),
       description: 'Whether or not the video is released.',
     },
-  }
+  },
+  outputFields: {
+    video: {
+      type: videoType,
+    },
+  },
+  mutateAndGetPayload: (args) => new Promise((resolve, reject) => {
+    Promise.resolve(createVideo(args))
+      .then((video) => resolve({ video }))
+      .catch(reject);
+  }),
 });
 
 const mutationType = new GraphQLObjectType({
   name: 'Mutation',
   description: 'The root Mutation type.',
   fields: {
-    createVideo: {
-      type: videoType,
-      args: {
-        video: {
-          type: new GraphQLNonNull(videoInputType),
-        },
-      },
-      resolve: (_, args) => {
-        return createVideo(args.video);
-      },
-    },
+    createVideo: videoMutation
   },
 });
 
@@ -155,62 +160,40 @@ server.listen(PORT, () => {
 // # testing GraphQL queries)
 
 // INPUT:
+// mutation AddVideoQuery($input: AddVideoInput!) {
+//   createVideo(input: $input) {
+//     video {
+//       title
+//     }
+//   }
+// }
+// QUERY VARIABLES (ADD THEM BY CLICKING ON THE QUERY
+// VARIABLES BAR AT THE BOTTOM):
 // {
-//   videos {
-//     edges {
-//       node {
-//         id,
-//         title,
-//         duration
+//   "input": {
+//     "title": "Video Title",
+//     "duration": 300,
+//     "released": false,
+//     "clientMutationId": "abcd"
+//   }  
+// }
+// OUTPUT:
+// {
+//   "data": {
+//     "createVideo": {
+//       "video": {
+//         "title": "Video Title"
 //       }
 //     }
 //   }
 // }
-// OUTPUT:
-// {
-//   "data": {
-//     "videos": {
-//       "edges": [
-//         {
-//           "node": {
-//             "id": "VmlkZW86YQ==",
-//             "title": "Create a GraphQL Schema",
-//             "duration": 120
-//           }
-//         },
-//         {
-//           "node": {
-//             "id": "VmlkZW86Yg==",
-//             "title": "Ember.js CLI",
-//             "duration": 240
-//           }
-//         }
-//       ]
-//     }
-//   }
-// }
 
 // INPUT:
-// {
+// query AllVideosQuery {
 //   videos {
-//     totalCount
-//   }
-// }
-// OUTPUT:
-// {
-//   "data": {
-//     "videos": {
-//       "totalCount": 2
-//     }
-//   }
-// }
-
-// INPUT:
-// {
-//   videos(first: 1) {
 //     edges {
 //       node {
-//         title
+//         title 
 //       }
 //     }
 //   }
@@ -224,32 +207,17 @@ server.listen(PORT, () => {
 //           "node": {
 //             "title": "Create a GraphQL Schema"
 //           }
-//         }
-//       ]
-//     }
-//   }
-// }
-
-// INPUT:
-// {
-//   videos(last: 1) {
-//     edges {
-//       node {
-//         title
-//       }
-//     }
-//   }
-// }
-// OUTPUT:
-// {
-//   "data": {
-//     "videos": {
-//       "edges": [
+//         },
 //         {
 //           "node": {
 //             "title": "Ember.js CLI"
 //           }
-//         }
+//         },
+//         {
+//           "node": {
+//             "title": "Video Title"
+//           }
+//         },
 //       ]
 //     }
 //   }
