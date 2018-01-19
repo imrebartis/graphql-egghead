@@ -36,6 +36,15 @@ const videoA = {
     return video;
   };
 
+  const getObjectById = (type, id) => {
+    const types = {
+      video: getVideoById,
+    };
+  
+    return types[type](id);
+  };
+
   exports.createVideo = createVideo;
   exports.getVideos = getVideos;
+  exports.getObjectById = getObjectById;
   exports.getVideoById = getVideoById;

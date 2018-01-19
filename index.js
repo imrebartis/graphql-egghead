@@ -1,3 +1,12 @@
+// The GraphQL Relay Specification
+//  requires that a GraphQL Schema has 
+//  some kind of mechanism for re-fetching an object. 
+//  For typical Relay-compliant servers, this is going to be 
+//  the Node Interface. Here we're adding in the Node 
+//  interface to a GraphQL Schema by using the helpers available 
+//  in the graphql-relay npm package.
+
+
 'use strict';
 
 const express = require('express');
@@ -14,7 +23,8 @@ const {
   GraphQLBoolean,
 } = require('graphql');
 const { getVideoById, getVideos, createVideo } = require('./src/data');
-const nodeInterface = require('./src/node');
+const { globalIdField } = require('graphql-relay');
+const { nodeInterface, nodeField } = require('./src/node');
 
 
 const PORT = process.env.PORT || 3000;
@@ -39,10 +49,7 @@ const videoType = new GraphQLObjectType({
   name: 'Video',
   description: 'A video on Egghead.io',
   fields: {
-    id: {
-      type: new GraphQLNonNull(GraphQLID),
-      description: 'The id of the video.',
-    },
+    id: globalIdField(),
     title: {
       type: GraphQLString,
       description: 'The title of the video.',
@@ -66,6 +73,7 @@ const queryType = new GraphQLObjectType({
   name: 'QueryType',
   description: 'The root query type.',
   fields: {
+    node: nodeField,
     videos: {
       type: new GraphQLList(videoType),
       resolve: getVideos
@@ -141,19 +149,43 @@ server.listen(PORT, () => {
 // (GraphiQL, an in-browser tool for writing, validating, and
 // # testing GraphQL queries)
 
-// Creating a video in GraphiQL:
-// mutation M {
-//   createVideo(video: {title: "Foo", duration: 300, released: false}) {
-//     id
-//     title
-//   }
+// INPUT:
+// {
+//   videos {
+//   	id
+// 	}
 // }
-// =>
+// OUTPUT:
 // {
 //   "data": {
-//     "createVideo": {
-//       "id": "Rm9v",
-//       "title": "Foo"
+//     "videos": [
+//       {
+//         "id": "VmlkZW86YQ=="
+//       },
+//       {
+//         "id": "VmlkZW86Yg=="
+//       },
+//       {
+//         "id": "VmlkZW86Um05dg=="
+//       }
+//     ]
+//   }
+// }
+
+// INPUT:
+// {
+//   node(id: "VmlkZW86YQ==") {
+//     ... on Video {
+//       title
+//     }
+//   }
+// }
+
+// OUTPUT:
+// {
+//   "data": {
+//     "node": {
+//       "title": "Create a GraphQL Schema"
 //     }
 //   }
 // }
