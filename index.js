@@ -1,11 +1,8 @@
-// The GraphQL Relay Specification
-//  requires that a GraphQL Schema has 
-//  some kind of mechanism for re-fetching an object. 
-//  For typical Relay-compliant servers, this is going to be 
-//  the Node Interface. Here we're adding in the Node 
-//  interface to a GraphQL Schema by using the helpers available 
-//  in the graphql-relay npm package.
-
+// In order to properly traverse through collections,
+// Relay-compliant servers require a mechanism to page through
+// collections available in a GraphQL Schema. Here we're
+// creating a Connection type from an existing GraphQL List Type
+// and access edge information from each collection.
 
 'use strict';
 
@@ -23,27 +20,18 @@ const {
   GraphQLBoolean,
 } = require('graphql');
 const { getVideoById, getVideos, createVideo } = require('./src/data');
-const { globalIdField } = require('graphql-relay');
+const {
+  globalIdField,
+  connectionDefinitions,
+  connectionFromPromisedArray,
+  connectionArgs
+} = require('graphql-relay');
 const { nodeInterface, nodeField } = require('./src/node');
+
 
 
 const PORT = process.env.PORT || 3000;
 const server = express();
-
-
-// The goal for the interface is to be able
-// to use it anytime we have shared fields between types,
-// e.g. if we also have the instructorType below
-
-// const instructorType = newGraphQLObjectType({
-//   fields: {
-//     id: {
-//       type: GraphQLID,
-//       description: 'The id of the video',
-//     },
-//   },
-//   interfaces: [nodeInterface]
-// });
 
 const videoType = new GraphQLObjectType({
   name: 'Video',
@@ -69,14 +57,31 @@ const videoType = new GraphQLObjectType({
 
 exports.videoType = videoType;
 
+const { connectionType: VideoConnection } = connectionDefinitions({
+  nodeType: videoType,
+  connectionFields: () => ({
+    totalCount: {
+      type: GraphQLInt,
+      description: 'A count of the total number of objects in this connection.',
+      resolve: (conn) => {
+        return conn.edges.length;
+      },
+    },
+  }),
+});
+
 const queryType = new GraphQLObjectType({
   name: 'QueryType',
   description: 'The root query type.',
   fields: {
     node: nodeField,
     videos: {
-      type: new GraphQLList(videoType),
-      resolve: getVideos
+      type: VideoConnection,
+      args: connectionArgs,
+      resolve: (_, args) => connectionFromPromisedArray(
+        getVideos(),
+        args
+      ),
     },
     video: {
       type: videoType,
@@ -152,40 +157,100 @@ server.listen(PORT, () => {
 // INPUT:
 // {
 //   videos {
-//   	id
-// 	}
+//     edges {
+//       node {
+//         id,
+//         title,
+//         duration
+//       }
+//     }
+//   }
 // }
 // OUTPUT:
 // {
 //   "data": {
-//     "videos": [
-//       {
-//         "id": "VmlkZW86YQ=="
-//       },
-//       {
-//         "id": "VmlkZW86Yg=="
-//       },
-//       {
-//         "id": "VmlkZW86Um05dg=="
-//       }
-//     ]
+//     "videos": {
+//       "edges": [
+//         {
+//           "node": {
+//             "id": "VmlkZW86YQ==",
+//             "title": "Create a GraphQL Schema",
+//             "duration": 120
+//           }
+//         },
+//         {
+//           "node": {
+//             "id": "VmlkZW86Yg==",
+//             "title": "Ember.js CLI",
+//             "duration": 240
+//           }
+//         }
+//       ]
+//     }
 //   }
 // }
 
 // INPUT:
 // {
-//   node(id: "VmlkZW86YQ==") {
-//     ... on Video {
-//       title
+//   videos {
+//     totalCount
+//   }
+// }
+// OUTPUT:
+// {
+//   "data": {
+//     "videos": {
+//       "totalCount": 2
 //     }
 //   }
 // }
 
+// INPUT:
+// {
+//   videos(first: 1) {
+//     edges {
+//       node {
+//         title
+//       }
+//     }
+//   }
+// }
 // OUTPUT:
 // {
 //   "data": {
-//     "node": {
-//       "title": "Create a GraphQL Schema"
+//     "videos": {
+//       "edges": [
+//         {
+//           "node": {
+//             "title": "Create a GraphQL Schema"
+//           }
+//         }
+//       ]
+//     }
+//   }
+// }
+
+// INPUT:
+// {
+//   videos(last: 1) {
+//     edges {
+//       node {
+//         title
+//       }
+//     }
+//   }
+// }
+// OUTPUT:
+// {
+//   "data": {
+//     "videos": {
+//       "edges": [
+//         {
+//           "node": {
+//             "title": "Ember.js CLI"
+//           }
+//         }
+//       ]
 //     }
 //   }
 // }
